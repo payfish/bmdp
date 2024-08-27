@@ -65,9 +65,6 @@ public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> impl
                 CopyOptions.create()
                         .setIgnoreNullValue(true)
                         .setFieldValueEditor((fieldName, filedValue) -> filedValue.toString()));
-//        voucherMap.put("beginTime", voucher.getBeginTime().toString());
-//        voucherMap.put("endTime", voucher.getEndTime().toString());
-//        voucherMap.put("stock", voucher.getStock().toString());
         stringRedisTemplate.opsForHash().putAll(SECKILL_MAP_KEY + voucher.getId(), svrMap);
     }
 }
