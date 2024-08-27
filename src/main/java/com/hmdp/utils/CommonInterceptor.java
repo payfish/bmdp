@@ -23,27 +23,25 @@ public class CommonInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
-//        //获取session
-//        HttpSession session = request.getSession();
-
         //获取请求头中的token
         String token = request.getHeader("authorization");
         if (token == null) {
-            return true;
+            return true;//交给下一个拦截器拦截
         }
 
         // 基于token获取redis中的用户
         Map<Object, Object> userMap = stringRedisTemplate.opsForHash().entries(LOGIN_USER_KEY + token);
 
         if (userMap.isEmpty()) {
-            return true;
+            return true;//交给下一个拦截器拦截
         }
-
+        //fillBeanWithMap 方法用于将 Map 中的数据填充到一个已经存在的 Bean 对象中。
         UserDTO userDTO = BeanUtil.fillBeanWithMap(userMap, new UserDTO(), false);
 
         //用户存在，保存用户到Thread local
         UserHolder.saveUser(userDTO);
 
+        //这个拦截器的作用是拦截所有请求并刷新用户的登录有效期
         stringRedisTemplate.expire(LOGIN_USER_KEY + token, LOGIN_USER_TTL, TimeUnit.MINUTES);
 
         return true;

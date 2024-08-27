@@ -1,19 +1,27 @@
 package com.hmdp.controller;
 
 
+import cn.hutool.core.bean.BeanUtil;
 import com.hmdp.dto.LoginFormDTO;
 import com.hmdp.dto.Result;
 import com.hmdp.dto.UserDTO;
+import com.hmdp.entity.Blog;
 import com.hmdp.entity.User;
 import com.hmdp.entity.UserInfo;
 import com.hmdp.service.IUserInfoService;
 import com.hmdp.service.IUserService;
+import com.hmdp.utils.SystemConstants;
 import com.hmdp.utils.UserHolder;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
+import java.util.List;
+
+import static com.hmdp.utils.RedisConstants.LOGIN_USER_KEY;
 
 /**
  * <p>
@@ -34,6 +42,9 @@ public class UserController {
     @Resource
     private IUserInfoService userInfoService;
 
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
+
     /**
      * 发送手机验证码
      */
@@ -49,7 +60,6 @@ public class UserController {
      */
     @PostMapping("/login")
     public Result login(@RequestBody LoginFormDTO loginForm, HttpSession session){
-
         return userService.login(loginForm, session);
     }
 
@@ -58,10 +68,28 @@ public class UserController {
      * @return 无
      */
     @PostMapping("/logout")
-    public Result logout(){
-        // TODO 实现登出功能
-        return Result.fail("功能未完成");
+        public Result logout(HttpServletRequest request) {
+        // 1. 从请求头中获取 token
+        String token = request.getHeader("Authorization");
+
+        if (token == null || token.isEmpty()) {
+            return Result.fail("用户未登录");
+        }
+
+        // 2. 使用 token 构造 Redis key
+        String redisKey = LOGIN_USER_KEY + token;
+
+        // 3. 删除 Redis 中的用户会话数据
+        Boolean deleted = stringRedisTemplate.delete(redisKey);
+
+        if (Boolean.TRUE.equals(deleted)) {
+            return Result.ok("登出成功");
+        } else {
+            return Result.fail("登出失败或用户未登录");
+        }
     }
+
+
 
     @GetMapping("/me")
     public Result me(){
@@ -82,4 +110,17 @@ public class UserController {
         // 返回
         return Result.ok(info);
     }
+
+    @GetMapping("/{id}")
+    public Result queryUserById(@PathVariable("id") Long userId){
+        // 查询详情
+        User user = userService.getById(userId);
+        if (user == null) {
+            return Result.ok();
+        }
+        UserDTO userDTO = BeanUtil.copyProperties(user, UserDTO.class);
+        // 返回
+        return Result.ok(userDTO);
+    }
+
 }

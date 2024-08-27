@@ -1,17 +1,25 @@
 package com.hmdp.service.impl;
 
+import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.bean.copier.CopyOptions;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hmdp.dto.Result;
+import com.hmdp.entity.SeckillVoucherRedis;
 import com.hmdp.entity.Voucher;
 import com.hmdp.mapper.VoucherMapper;
 import com.hmdp.entity.SeckillVoucher;
 import com.hmdp.service.ISeckillVoucherService;
 import com.hmdp.service.IVoucherService;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
+import static com.hmdp.utils.RedisConstants.SECKILL_MAP_KEY;
 
 /**
  * <p>
@@ -26,6 +34,8 @@ public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> impl
 
     @Resource
     private ISeckillVoucherService seckillVoucherService;
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
 
     @Override
     public Result queryVoucherOfShop(Long shopId) {
@@ -47,5 +57,17 @@ public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> impl
         seckillVoucher.setBeginTime(voucher.getBeginTime());
         seckillVoucher.setEndTime(voucher.getEndTime());
         seckillVoucherService.save(seckillVoucher);
+        SeckillVoucherRedis svr = SeckillVoucherRedis.builder()
+                .stock(voucher.getStock())
+                .beginTime(voucher.getBeginTime())
+                .endTime(voucher.getEndTime()).build();
+        Map<String, Object> svrMap = BeanUtil.beanToMap(svr, new HashMap<>(),
+                CopyOptions.create()
+                        .setIgnoreNullValue(true)
+                        .setFieldValueEditor((fieldName, filedValue) -> filedValue.toString()));
+//        voucherMap.put("beginTime", voucher.getBeginTime().toString());
+//        voucherMap.put("endTime", voucher.getEndTime().toString());
+//        voucherMap.put("stock", voucher.getStock().toString());
+        stringRedisTemplate.opsForHash().putAll(SECKILL_MAP_KEY + voucher.getId(), svrMap);
     }
 }
