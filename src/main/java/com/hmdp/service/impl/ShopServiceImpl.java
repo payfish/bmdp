@@ -21,7 +21,12 @@ import org.springframework.util.StringUtils;
 
 import javax.annotation.Resource;
 import java.time.LocalDateTime;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.LockSupport;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static com.hmdp.utils.RedisConstants.*;
 
@@ -117,7 +122,16 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
         // 2、删除缓存
 
         stringRedisTemplate.delete(CACHE_SHOP_KEY + id);
-
+        ReentrantLock lock = new ReentrantLock();
+        lock.lock();
+        CountDownLatch countDownLatch = new CountDownLatch(1);
+        ConcurrentHashMap map = new ConcurrentHashMap();
+        CyclicBarrier cyclicBarrier = new CyclicBarrier(2);
+        map.put(1,1);
+        AtomicInteger atomicInteger = new AtomicInteger(0);
+        ArrayBlockingQueue arrayBlockingQueue = new ArrayBlockingQueue(10);
+        Deque queue = new ArrayDeque();
+        LockSupport.park();
         return Result.ok();
     }
 
